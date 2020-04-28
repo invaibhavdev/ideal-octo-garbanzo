@@ -2,10 +2,14 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = new express.Router();
 const Task = require('../models/task');
+const auth = require('../middlewares/auth');
 
 // Create a task
-router.post('/tasks', async (req, res) => {
-    const task = new Task(req.body)
+router.post('/tasks', auth, async (req, res) => {
+    const task = new Task({
+    	...req.body,
+    	owner: req.user._id
+    });
 
     try {
         await task.save()
@@ -17,9 +21,9 @@ router.post('/tasks', async (req, res) => {
 
 
 // Get all tasks
-router.get('/tasks', async (req, res) => {
+router.get('/tasks', auth, async (req, res) => {
 	try {
-		const tasks = await Task.find({});
+		const tasks = await Task.find({ owner: req.user._id });
 		res.send(tasks);
 	} catch (e) {
 		 res.status(500).json({ error: e });
@@ -28,10 +32,10 @@ router.get('/tasks', async (req, res) => {
 
 
 // Get a specific task
-router.get('/tasks/:id', async (req, res) => {
+router.get('/tasks/:id', auth, async (req, res) => {
 	const _id = req.params.id;
 	try {
-		const task = await Task.findById(_id);
+		const task = await Task.findOne({_id, owner: req.user._id});
 		if (!task) {
 			return res.status(404).json({ message: 'Task not found' });
 		}
@@ -42,7 +46,7 @@ router.get('/tasks/:id', async (req, res) => {
 });
 
 // Update a task
-router.patch('/tasks/:id', async (req, res) => {
+router.patch('/tasks/:id', auth, async (req, res) => {
 	const _id = req.params.id;
 	// allowing only existing params w/ message
 	const updates = Object.keys(req.body);
@@ -53,7 +57,7 @@ router.patch('/tasks/:id', async (req, res) => {
 	}
 	try {
 		// const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-		const task = await Task.findById(_id);
+		const task = await Task.findOne({ _id, owner: req.user._id });
 		updates.forEach((update) => {
 			task[update] = req.body[update];
 		});
@@ -68,10 +72,10 @@ router.patch('/tasks/:id', async (req, res) => {
 });
 
 // Delete a task
-router.delete('/tasks/:id', async (req, res) => {
+router.delete('/tasks/:id', auth, async (req, res) => {
 	const _id = req.params.id;
 	try {
-		const task = await Task.findByIdAndDelete(_id);
+		const task = await Task.findOneAndDelete({ _id, owner: req.user._id});
 		if (!task) {
 			return res.status(404).json({ error: "The requested task doesn't exist" });
 		}

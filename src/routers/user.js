@@ -11,7 +11,7 @@ router.post('/users', async (req, res) => {
 		const token = await user.generateAuthToken();
 		res.status(201).send({ user, token });
 	} catch (e) {
-		res.status(400).json(e);
+		res.status(400).send(e);
 	}
 });
 
@@ -19,9 +19,9 @@ router.post('/users', async (req, res) => {
 router.get('/users/me', auth, async (req, res) => {
 	try {
 		// const users = await User.find({});
-		res.json(req.user);
+		res.send(req.user);
 	} catch (e) {
-		res.status(500).json({ error: e });
+		res.status(500).send(e);
 	}
 });
 
@@ -45,8 +45,8 @@ router.get('/users/:id', async (req, res) => {
 
 
 // Update a user
-router.patch('/users/:id', async (req, res) => {
-	const _id = req.params.id;
+router.patch('/users/me', auth, async (req, res) => {
+	// const _id = req.params.id;
 	// allowing only existing params w/ message
 	const updates = Object.keys(req.body);
 	const allowedUpdates = ['name', 'email', 'password', 'age'];
@@ -58,31 +58,24 @@ router.patch('/users/:id', async (req, res) => {
 		// commenting this since findByIdAndUpdate does not call the mongoose save function where we've put our password hash hook
 		// so we'll change that to findById and then save it
 		// const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-		const user = await User.findById(_id);
 		updates.forEach((update) => {
-			user[update] = req.body[update];
+			req.user[update] = req.body[update];
 		});
-		await user.save();
-		if (!user) {
-			return res.status(404).send();
-		}
-		res.send(user)
+		await req.user.save();
+		res.send(req.user)
 	} catch (e) {
 		res.status(400).send(e);
 	}
 })
 
 // Delete a user
-router.delete('/users/:id', async (req, res) => {
-	const _id = req.params.id;
+router.delete('/users/me', auth, async (req, res) => {
+	// const _id = req.params.id;
 	try {
-		const user = await User.findByIdAndDelete(_id);
-		if (!user) {
-			return res.status(404).json({ error: "The requested user doesn't exist" });
-		}
-		res.json(user);
+		await req.user.remove();
+		res.send(req.user);
 	} catch (e) {
-		res.status(500).json(e);
+		res.status(500).send(e);
 	}
 });
 
@@ -97,5 +90,27 @@ router.post('/users/login', async (req, res) => {
 	} catch (e) {
 		res.status(400).send(e);
 	}
-})
+});
+
+router.post('/users/logout', auth, async(req, res) => {
+	try {
+		req.user.tokens =  req.user.tokens.filter((token) => {
+			return token.token !== req.token
+		})
+		await req.user.save();
+		res.send();
+	} catch (e) {
+		res.status(500).send(e);
+	}
+});
+
+router.post('/users/logoutAll', auth, async (req, res) => {
+	try {
+		req.user.tokens = [];
+		await req.user.save();
+		res.send();
+	} catch (e) {
+		res.status(500).send(e);
+	}
+});
 module.exports = router;
