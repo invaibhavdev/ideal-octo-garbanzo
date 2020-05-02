@@ -7,9 +7,11 @@ const app = express();
 
 const port = process.env.PORT || 3000;
 
-// app.use((req, res, next) => {
-// 	res.status(503).send("Please try later");
-// })
+app.use((req, res, next) => {
+	// res.status(503).send("Please try later");
+	res.header("Access-Control-Allow-Origin", "*");
+	next();
+})
 
 const userRouter = require('./routers/user');
 const taskRouter = require('./routers/task');
